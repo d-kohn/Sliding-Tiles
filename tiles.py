@@ -1,5 +1,7 @@
 import random
 import copy
+import winsound
+import time
 
 # ------ Node Class ------
 class Node:
@@ -36,8 +38,8 @@ class Board:
 #        board = [[4,5,6],[3,7,8],[2,1,0]]
 #        self.blank = [2,2]
 
-        board = [[8,7,6],[5,4,3],[2,1,0]]
-        self.blank = [2,2]
+#        board = [[8,7,6],[5,4,3],[2,1,0]]
+#        self.blank = [2,2]
 
 #        board = [[4,3,2],[6,1,5],[0,7,8]]
 #        self.blank = [2,0]
@@ -51,8 +53,12 @@ class Board:
 #        board = [[1,0,2],[6,4,3],[7,8,5]]
 #        self.blank = [0,1]
 
+        #  Test boards:
+#        board = [[3,4,5],[2,0,8],[1,6,7]]
+#        self.blank = [1,1]
 
-        '''
+
+#        '''
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
         tiles = [False] * (self.size*self.size)
 
@@ -91,17 +97,11 @@ class Board:
                 board_order.append(self.board[y][x])
         board_order = list(filter((0).__ne__, board_order))
         for index in range(len(correct_order)):
-#            if (board_order[index] != correct_order[index]):
             for displaced in range(len(correct_order)):
-#                print("Comparing ", board_order[displaced], ">", correct_order[index])
                 if (board_order[displaced] > correct_order[index]):
-#                    print("(",correct_order[index],",",board_order[displaced],")")
                     displacement_count += 1
                 if (board_order[displaced] == correct_order[index]):
                     break
-#        print(correct_order)
-#        print(board_order)
-#        print(displacement_count)
         if (displacement_count % 2 == 0):
             return True
         else:
@@ -112,6 +112,9 @@ class Board:
             print(self.board[i])
 # ------ End Board Class ------
 
+def play_sound(duration, frequency):
+    winsound.Beep(frequency, duration)
+        
 # Count number of displaced tiles
 def h1_score(board):
     score = 0
@@ -136,18 +139,17 @@ def h2_score(board):
                             break
                     if (found == True):
                         break
-#    print(score)
     return score
 
 def h3_score(board):
     return h1_score(board) + h2_score(board)
 
 def path(final_node):
-    solution_path = [final_node.board_state]
-    parent_node = final_node
-    while(parent_node.parent != None):
-        solution_path.insert(0, parent_node.board_state)
-        parent_node = parent_node.parent
+    solution_path = [final_node]
+    current_node = final_node
+    while(current_node.parent != None):
+        current_node = current_node.parent
+        solution_path.insert(0, current_node)
     return solution_path
 
 def update_search_tree(frontier, current_state, visited, h, g):
@@ -167,53 +169,66 @@ def update_search_tree(frontier, current_state, visited, h, g):
                 do_not_add = False
                 for visited_node in visited:    
                     if (visited_node.board_state.board == new_board_state.board):
-#                        print("DO NOT ADD!!!!")
                         do_not_add = True
                         break
                 if (do_not_add == False):
                     new_node = Node(new_board_state, current_state)
                     score = h[SCORE_FUNCTION](new_node.board_state.board)
-                    if (g == A_PLUS):
+                    if (g == A_STAR):
                         score += new_node.steps
                     h[SCORE_LIST].append(score)
   
                     frontier.append(new_node)
                     current_state.add_node(new_node, tile)
                     nodes_added += 1
-#    print()
     return nodes_added
 
 def update_state(frontier, score_list):
-    state_scores = []
-    score_locations = []
+    top_score_locations = []
     new_state = None
-    state_scores = score_list
-    top_score = state_scores[0]
-    score_locations.append(0)
+    top_score = score_list[0]
+    top_score_locations.append(0)
 
-    for index in range(len(state_scores)):
-        if (state_scores[index] == top_score):
-            score_locations.append(index)
-        elif (state_scores[index] < top_score):
-            top_score = state_scores[index]
-            score_locations = [index]
-#    print("Top Score: ", top_score)
+    for index in range(len(score_list)):
+        if (score_list[index] == top_score):
+            top_score_locations.append(index)
+        elif (score_list[index] < top_score):
+            top_score = score_list[index]
+            top_score_locations = [index]
 
-    if (len(score_locations) > 1):
-        new_state_index = random.randrange(len(score_locations)-1)
-        new_state = frontier[new_state_index]
-        del frontier[new_state_index]
-        del score_list[new_state_index]
-    else:
-        new_state = frontier[score_locations[0]]
-        del frontier[score_locations[0]]
-        del score_list[score_locations[0]]
-
+    new_state_index = 0
+    if (len(top_score_locations) > 1):
+        new_state_index = random.randrange(len(top_score_locations)-1)
+    new_state = frontier[new_state_index]
+    del frontier[new_state_index]
+    del score_list[new_state_index]
     return new_state, top_score
+
+def run_test(frontier, current_node, visited, moves, heuristic, algorithm):
+    solution_path = None
+    total_nodes = 0
+    while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):      
+        failed = True
+        moves += 1
+        if (moves % REPORT_FREQUENCY == 0):
+            print("Visited Nodes: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
+        total_nodes += update_search_tree(frontier, current_node, visited, heuristic, algorithm)
+        current_node, top_score = update_state(frontier, heuristic[SCORE_LIST])
+        visited.append(current_node)
+    if (moves < MAX_MOVES):
+        solution_path = path(current_node)
+#        for board in solution_path:
+#            print(board.board, end='-->')   
+#        print()
+        print("SOLUTION FOUND! Visited Nodes: ", moves, "  Steps: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes)
+        print()
+        failed = False
+    return solution_path, failed
 
 # ------- MAIN --------
 BOARD_SIZE = 3
 MAX_MOVES = 50000
+REPORT_FREQUENCY = 5000
 X = 0
 Y = 1
 BLANK = 0
@@ -224,10 +239,21 @@ DOWN_TILE = 2
 RIGHT_TILE = 3
 
 GBFS = 0
-A_PLUS = 1
+A_STAR = 1
 H1 = 0
 H2 = 1
 H3 = 2
+
+h_name = {
+    H1 : "H1",
+    H2 : "H2",
+    H3 : "H3"
+}
+
+algorithm_name = {
+    GBFS : "GBFS",
+    A_STAR : "A*"
+}
 
 SCORE_FUNCTION = 0
 SCORE_LIST = 1
@@ -240,27 +266,79 @@ MOVE = {
 }
 
 GOAL_BOARD = Board(BOARD_SIZE, "GOAL")
-state_tree = Node(Board(BOARD_SIZE))
-current_node= state_tree
+success = False
+total_steps = [ [0]*BOARD_SIZE for i in range(BOARD_SIZE)]
+while (success == False):
+    state_tree = Node(Board(BOARD_SIZE))
+    state_tree.board_state.print_board()
+    paths_table = []
+    failed = False
+    for heuristic in range(H1, H3+1):
+        paths = []
+        for algorithm in range(GBFS, A_STAR+1):
+            scores = []
+            h_choice = {
+                H1 : [h1_score, scores],
+                H2 : [h2_score, scores],
+                H3 : [h3_score, scores] 
+            }
+            moves = 0
+            current_node = copy.deepcopy(state_tree)
+            visited = [current_node]
+            frontier = []
+            total_nodes = 1
+            solution_path, failed = run_test(frontier, current_node, visited, moves, h_choice[heuristic], algorithm)
+            if (failed == True):
+                break
+            paths.append(solution_path)
+            solution_path = None
+        if (failed == True):
+            break
+        paths_table.append(paths)
+    if (failed == False):
+        success = True
+        print()
+        for heuristic in range(H1, H3+1):
+            for algorithm in range(GBFS, A_STAR+1):
+#               print(paths_table)
+                solution_path = paths_table[heuristic][algorithm]
+                total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
+                print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
+                for node in solution_path:
+                    print(node.board_state.board, end='-->')
+                print()
+                print()
+    else:
+        print("Failed to find a solution...")   
+        print()             
 
-frontier = []
-scores = []
-node_depths = []
-total_nodes = 1
+while (True):
+    play_sound(1000, 600)
+    time.sleep(1)
+#for heuristic in range(H1, H3+1):
+#    for algorithm in range(GBFS, A_STAR+1):
 
-h_choice = {
-    H1 : [h1_score, scores],
-    H2 : [h2_score, scores],
-    H3 : [h3_score, scores] 
-}
-
-visited = [current_node]
-moves = 0
-top_score = 0
-
+#           
+    '''
+    scores = []
+    h_choice = {
+        H1 : [h1_score, scores],
+        H2 : [h2_score, scores],
+        H3 : [h3_score, scores] 
+    }
+    moves = 0
+    current_node = copy.deepcopy(state_tree)
+    visited = [current_node]
+    frontier = []
+    total_nodes = 1
+    solution_path = run_test(frontier, current_node, visited, moves, h_choice[heuristic], A_PLUS)
+    if (solution_path != None):
+        paths.append(solution_path)
+#    '''
+'''
 while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
     heuristic = h_choice[H2]
-    algorithm = A_PLUS
+    algorithm = GBFS
     moves += 1
     if (moves % 1000 == 0):
         print("Visited Nodes: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
@@ -274,3 +352,4 @@ if (moves < MAX_MOVES):
     print()
     print()
     print("Visited Nodes: ", moves, "  Steps: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes)
+'''
