@@ -36,12 +36,23 @@ class Board:
 #        board = [[4,5,6],[3,7,8],[2,1,0]]
 #        self.blank = [2,2]
 
+        board = [[8,7,6],[5,4,3],[2,1,0]]
+        self.blank = [2,2]
+
 #        board = [[4,3,2],[6,1,5],[0,7,8]]
 #        self.blank = [2,0]
 
-        board = [[0,1,2],[3,6,4],[7,8,5]]
-        self.blank = [0,0]
+#        board = [[0,1,2],[3,6,4],[7,8,5]]
+#        self.blank = [0,0]
 
+#        board = [[3,1,2],[6,0,4],[7,8,5]]
+#        self.blank = [1,1]
+
+#        board = [[1,0,2],[6,4,3],[7,8,5]]
+#        self.blank = [0,1]
+
+
+        '''
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
         tiles = [False] * (self.size*self.size)
 
@@ -59,6 +70,7 @@ class Board:
                         if (tile == 0):
                             self.blank = [x, y]
 #        print(board)
+#       '''
         return board
 
     def build_goal(self):
@@ -79,13 +91,14 @@ class Board:
                 board_order.append(self.board[y][x])
         board_order = list(filter((0).__ne__, board_order))
         for index in range(len(correct_order)):
-            if (board_order[index] != correct_order[index]):
-                for displaced in range(len(correct_order)):
-                    if (board_order[displaced] > correct_order[index]):
-#                        print("(",correct_order[index],",",board_order[displaced],")")
-                        displacement_count += 1
-                    if (board_order[displaced] == correct_order[index]):
-                        break
+#            if (board_order[index] != correct_order[index]):
+            for displaced in range(len(correct_order)):
+#                print("Comparing ", board_order[displaced], ">", correct_order[index])
+                if (board_order[displaced] > correct_order[index]):
+#                    print("(",correct_order[index],",",board_order[displaced],")")
+                    displacement_count += 1
+                if (board_order[displaced] == correct_order[index]):
+                    break
 #        print(correct_order)
 #        print(board_order)
 #        print(displacement_count)
@@ -108,7 +121,7 @@ def h1_score(board):
                 score += 1
     return score
 
-def h2_score(board):
+def h2_score(board):  
     score = 0
     for goal_y in range(BOARD_SIZE):
         for goal_x in range(BOARD_SIZE):
@@ -126,6 +139,9 @@ def h2_score(board):
 #    print(score)
     return score
 
+def h3_score(board):
+    return h1_score(board) + h2_score(board)
+
 def path(final_node):
     solution_path = [final_node.board_state]
     parent_node = final_node
@@ -134,7 +150,7 @@ def path(final_node):
         parent_node = parent_node.parent
     return solution_path
 
-def update_search_tree(frontier, current_state, visited, h1_scores, h2_scores, h):
+def update_search_tree(frontier, current_state, visited, h, g):
     nodes_added = 0
     for tile in range(4):
         new_board_state = copy.deepcopy(current_state.board_state)
@@ -150,36 +166,31 @@ def update_search_tree(frontier, current_state, visited, h1_scores, h2_scores, h
                 # Check if node has already been added
                 do_not_add = False
                 for visited_node in visited:    
-                    if (visited_node == new_board_state.board):
+                    if (visited_node.board_state.board == new_board_state.board):
+#                        print("DO NOT ADD!!!!")
                         do_not_add = True
                         break
                 if (do_not_add == False):
                     new_node = Node(new_board_state, current_state)
-                    if (h == H1):
-                        h1_scores.append(h1_score(new_node.board_state.board))
-                    elif (h == H2):
-                        h2_scores.append(h2_score(new_node.board_state.board) + new_node.steps)
-#                        print(h2_scores[len(h2_scores)-1])
-#                        new_node.board_state.print_board()
+                    score = h[SCORE_FUNCTION](new_node.board_state.board)
+                    if (g == A_PLUS):
+                        score += new_node.steps
+                    h[SCORE_LIST].append(score)
+  
                     frontier.append(new_node)
                     current_state.add_node(new_node, tile)
                     nodes_added += 1
 #    print()
     return nodes_added
 
-def update_state(frontier, visited, h):
+def update_state(frontier, score_list):
     state_scores = []
     score_locations = []
     new_state = None
-#    for frontier_state in frontier:
-#        state_scores.append(h_func(frontier_state.board_state.board))
-    if (h == H1):
-        state_scores = h1_scores
-    elif (h == H2):
-        state_scores = h2_scores
-
+    state_scores = score_list
     top_score = state_scores[0]
     score_locations.append(0)
+
     for index in range(len(state_scores)):
         if (state_scores[index] == top_score):
             score_locations.append(index)
@@ -187,22 +198,17 @@ def update_state(frontier, visited, h):
             top_score = state_scores[index]
             score_locations = [index]
 #    print("Top Score: ", top_score)
+
     if (len(score_locations) > 1):
         new_state_index = random.randrange(len(score_locations)-1)
         new_state = frontier[new_state_index]
         del frontier[new_state_index]
-        if (h == H1):
-            del h1_scores[new_state_index]
-        if (h == H2):
-            del h2_scores[new_state_index]
+        del score_list[new_state_index]
     else:
         new_state = frontier[score_locations[0]]
         del frontier[score_locations[0]]
-        if (h == H1):
-            del h1_scores[score_locations[0]]
-        if (h == H2):
-            del h2_scores[score_locations[0]]
-    visited.append(new_state)
+        del score_list[score_locations[0]]
+
     return new_state, top_score
 
 # ------- MAIN --------
@@ -217,9 +223,14 @@ UP_TILE = 1
 DOWN_TILE = 2
 RIGHT_TILE = 3
 
+GBFS = 0
+A_PLUS = 1
 H1 = 0
 H2 = 1
 H3 = 2
+
+SCORE_FUNCTION = 0
+SCORE_LIST = 1
 
 MOVE = {
     LEFT_TILE: [-1, 0],
@@ -233,33 +244,33 @@ state_tree = Node(Board(BOARD_SIZE))
 current_node= state_tree
 
 frontier = []
-h1_scores = []
-h2_scores = []
+scores = []
 node_depths = []
 total_nodes = 1
 
-visited = [current_node.board_state.board]
-#current_node.board_state.print_board()
-#print()
+h_choice = {
+    H1 : [h1_score, scores],
+    H2 : [h2_score, scores],
+    H3 : [h3_score, scores] 
+}
+
+visited = [current_node]
 moves = 0
 top_score = 0
 
-#while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
-while (current_node.board_state.board != GOAL_BOARD.board):
-    heuristic = H2
+while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
+    heuristic = h_choice[H2]
+    algorithm = A_PLUS
     moves += 1
-    if (moves % 100 == 0):
-        print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Visited Nodes: ", len(visited), "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
-#        print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
-    total_nodes += update_search_tree(frontier, current_node, visited, h1_scores, h2_scores, heuristic)
-    current_node, top_score = update_state(frontier, visited, heuristic)
-#    current_node.board_state.print_board()
-#    GOAL_BOARD.print_board()
+    if (moves % 1000 == 0):
+        print("Visited Nodes: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
+    total_nodes += update_search_tree(frontier, current_node, visited, heuristic, algorithm)
+    current_node, top_score = update_state(frontier, heuristic[SCORE_LIST])
+    visited.append(current_node)
 if (moves < MAX_MOVES):
     solution_path = path(current_node)
     for board in solution_path:
         print(board.board, end='-->')   
     print()
     print()
-    print("Nodes Checked: ", moves, "  Steps: ", current_node.steps)
-#current_node.board_state.print_board()
+    print("Visited Nodes: ", moves, "  Steps: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes)
