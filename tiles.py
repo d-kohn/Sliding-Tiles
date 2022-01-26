@@ -33,12 +33,15 @@ class Board:
                 parity = self.check_parity()
 
     def build_initial_board(self):
-        board = [[4,5,6],[3,7,8],[2,1,0]]
-        self.blank = [2,2]
+#        board = [[4,5,6],[3,7,8],[2,1,0]]
+#        self.blank = [2,2]
 
 #        board = [[4,3,2],[6,1,5],[0,7,8]]
 #        self.blank = [2,0]
-        '''
+
+        board = [[0,1,2],[3,6,4],[7,8,5]]
+        self.blank = [0,0]
+
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
         tiles = [False] * (self.size*self.size)
 
@@ -56,7 +59,6 @@ class Board:
                         if (tile == 0):
                             self.blank = [x, y]
 #        print(board)
-        '''
         return board
 
     def build_goal(self):
@@ -80,13 +82,13 @@ class Board:
             if (board_order[index] != correct_order[index]):
                 for displaced in range(len(correct_order)):
                     if (board_order[displaced] > correct_order[index]):
+#                        print("(",correct_order[index],",",board_order[displaced],")")
                         displacement_count += 1
                     if (board_order[displaced] == correct_order[index]):
                         break
-        self.print_board()
 #        print(correct_order)
-        print(board_order)
-        print(displacement_count)
+#        print(board_order)
+#        print(displacement_count)
         if (displacement_count % 2 == 0):
             return True
         else:
@@ -114,13 +116,14 @@ def h2_score(board):
             while (found == False):
                 for board_y in range(BOARD_SIZE):
                     for board_x in range(BOARD_SIZE):
-                        if (board[board_x][board_y] == GOAL_BOARD.board[goal_x][goal_y]): # and board[board_x][board_y] != 0):                            
+                        if (board[board_x][board_y] == GOAL_BOARD.board[goal_x][goal_y]):                          
                             man_distance = abs(board_x - goal_x) + abs(board_y - goal_y)
                             score += man_distance
                             found = True
                             break
                     if (found == True):
                         break
+#    print(score)
     return score
 
 def path(final_node):
@@ -132,6 +135,7 @@ def path(final_node):
     return solution_path
 
 def update_search_tree(frontier, current_state, visited, h1_scores, h2_scores, h):
+    nodes_added = 0
     for tile in range(4):
         new_board_state = copy.deepcopy(current_state.board_state)
         blank_x = new_board_state.blank[X]
@@ -143,24 +147,27 @@ def update_search_tree(frontier, current_state, visited, h1_scores, h2_scores, h
                 new_board_state.board[blank_x][blank_y] = new_board_state.board[new_blank_position_x][new_blank_position_y]
                 new_board_state.board[new_blank_position_x][new_blank_position_y] = BLANK
                 new_board_state.blank = [new_blank_position_x,new_blank_position_y]
-                new_node = Node(new_board_state, current_state)
                 # Check if node has already been added
                 do_not_add = False
                 for visited_node in visited:    
-                    if (visited_node == new_node.board_state.board):
+                    if (visited_node == new_board_state.board):
                         do_not_add = True
                         break
                 if (do_not_add == False):
+                    new_node = Node(new_board_state, current_state)
                     if (h == H1):
                         h1_scores.append(h1_score(new_node.board_state.board))
                     elif (h == H2):
                         h2_scores.append(h2_score(new_node.board_state.board) + new_node.steps)
-#                        print(h2_scores)
+#                        print(h2_scores[len(h2_scores)-1])
+#                        new_node.board_state.print_board()
                     frontier.append(new_node)
                     current_state.add_node(new_node, tile)
-                    visited.append(new_node.board_state.board)
+                    nodes_added += 1
+#    print()
+    return nodes_added
 
-def update_state(frontier, h):
+def update_state(frontier, visited, h):
     state_scores = []
     score_locations = []
     new_state = None
@@ -173,7 +180,7 @@ def update_state(frontier, h):
 
     top_score = state_scores[0]
     score_locations.append(0)
-    for index in range(len(state_scores)-1,-1,-1):
+    for index in range(len(state_scores)):
         if (state_scores[index] == top_score):
             score_locations.append(index)
         elif (state_scores[index] < top_score):
@@ -181,7 +188,7 @@ def update_state(frontier, h):
             score_locations = [index]
 #    print("Top Score: ", top_score)
     if (len(score_locations) > 1):
-        new_state_index = random.randrange(len(score_locations))
+        new_state_index = random.randrange(len(score_locations)-1)
         new_state = frontier[new_state_index]
         del frontier[new_state_index]
         if (h == H1):
@@ -195,11 +202,12 @@ def update_state(frontier, h):
             del h1_scores[score_locations[0]]
         if (h == H2):
             del h2_scores[score_locations[0]]
-    return new_state
+    visited.append(new_state)
+    return new_state, top_score
 
 # ------- MAIN --------
 BOARD_SIZE = 3
-MAX_MOVES = 100000
+MAX_MOVES = 50000
 X = 0
 Y = 1
 BLANK = 0
@@ -228,20 +236,25 @@ frontier = []
 h1_scores = []
 h2_scores = []
 node_depths = []
+total_nodes = 1
 
 visited = [current_node.board_state.board]
+#current_node.board_state.print_board()
+#print()
 moves = 0
+top_score = 0
 
-while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
+#while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
+while (current_node.board_state.board != GOAL_BOARD.board):
     heuristic = H2
     moves += 1
-    if (moves % 500 == 0):
-        print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier))
-    update_search_tree(frontier, current_node, visited, h1_scores, h2_scores, heuristic)
-    current_node = update_state(frontier, heuristic)
+    if (moves % 100 == 0):
+        print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Visited Nodes: ", len(visited), "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
+#        print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
+    total_nodes += update_search_tree(frontier, current_node, visited, h1_scores, h2_scores, heuristic)
+    current_node, top_score = update_state(frontier, visited, heuristic)
 #    current_node.board_state.print_board()
 #    GOAL_BOARD.print_board()
-
 if (moves < MAX_MOVES):
     solution_path = path(current_node)
     for board in solution_path:

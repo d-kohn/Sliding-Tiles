@@ -1,5 +1,6 @@
 import random
 import copy
+import multiprocessing
 
 # ------ Node Class ------
 class Node:
@@ -33,8 +34,8 @@ class Board:
                 parity = self.check_parity()
 
     def build_initial_board(self):
-        board = [[4,5,6],[3,7,8],[2,1,0]]
-        self.blank = [2,2]
+#        board = [[4,5,6],[3,7,8],[2,1,0]]
+#        self.blank = [2,2]
 
 #        board = [[4,3,2],[6,1,5],[0,7,8]]
 #        self.blank = [2,0]
@@ -197,6 +198,50 @@ def update_state(frontier, h):
             del h2_scores[score_locations[0]]
     return new_state
 
+def test_multi(codes, processes):
+    ''' Creates multiple processes to check the list of codes provided
+    Args:
+        codes (list[str]): List of numeric code strings
+        processes: (int): Number of processes to create
+    Returns:
+        list[str]: List of results (-1: failed code, ####: successful code)
+    '''
+    p = multiprocessing.Pool(processes)
+    code = p.map(test_begin, codes)
+    p.close()
+    print("Process closed")
+    return(code)
+
+def main():
+    state_tree = Node(Board(BOARD_SIZE))
+    current_node= state_tree
+
+    frontier = []
+    h1_scores = []
+    h2_scores = []
+    node_depths = []
+
+    visited = [current_node.board_state.board]
+    moves = 0
+
+    while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
+        heuristic = H2
+        moves += 1
+        if (moves % 500 == 0):
+            print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier))
+        update_search_tree(frontier, current_node, visited, h1_scores, h2_scores, heuristic)
+        current_node = update_state(frontier, heuristic)
+    #    current_node.board_state.print_board()
+    #    GOAL_BOARD.print_board()
+
+    if (moves < MAX_MOVES):
+        solution_path = path(current_node)
+        for board in solution_path:
+            print(board.board, end='-->')   
+        print()
+        print()
+        print("Nodes Checked: ", moves, "  Steps: ", current_node.steps)
+
 # ------- MAIN --------
 BOARD_SIZE = 3
 MAX_MOVES = 100000
@@ -221,32 +266,8 @@ MOVE = {
 }
 
 GOAL_BOARD = Board(BOARD_SIZE, "GOAL")
-state_tree = Node(Board(BOARD_SIZE))
-current_node= state_tree
 
-frontier = []
-h1_scores = []
-h2_scores = []
-node_depths = []
+if __name__ == "__main__":
+    main()
 
-visited = [current_node.board_state.board]
-moves = 0
-
-while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
-    heuristic = H2
-    moves += 1
-    if (moves % 500 == 0):
-        print("Moves: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier))
-    update_search_tree(frontier, current_node, visited, h1_scores, h2_scores, heuristic)
-    current_node = update_state(frontier, heuristic)
-#    current_node.board_state.print_board()
-#    GOAL_BOARD.print_board()
-
-if (moves < MAX_MOVES):
-    solution_path = path(current_node)
-    for board in solution_path:
-        print(board.board, end='-->')   
-    print()
-    print()
-    print("Nodes Checked: ", moves, "  Steps: ", current_node.steps)
 #current_node.board_state.print_board()
