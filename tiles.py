@@ -35,6 +35,8 @@ class Board:
                 parity = self.check_parity()
 
     def build_initial_board(self):
+#        Test boards:
+
 #        board = [[4,5,6],[3,7,8],[2,1,0]]
 #        self.blank = [2,2]
 
@@ -53,10 +55,8 @@ class Board:
 #        board = [[1,0,2],[6,4,3],[7,8,5]]
 #        self.blank = [0,1]
 
-        #  Test boards:
 #        board = [[3,4,5],[2,0,8],[1,6,7]]
 #        self.blank = [1,1]
-
 
 #        '''
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
@@ -75,7 +75,6 @@ class Board:
                         added = True
                         if (tile == 0):
                             self.blank = [x, y]
-#        print(board)
 #       '''
         return board
 
@@ -228,7 +227,7 @@ def run_test(frontier, current_node, visited, moves, heuristic, algorithm):
 # ------- MAIN --------
 BOARD_SIZE = 3
 MAX_MOVES = 50000
-REPORT_FREQUENCY = 5000
+REPORT_FREQUENCY = 10000
 X = 0
 Y = 1
 BLANK = 0
@@ -287,6 +286,7 @@ while (success == False):
             visited = [current_node]
             frontier = []
             total_nodes = 1
+            print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm])
             solution_path, failed = run_test(frontier, current_node, visited, moves, h_choice[heuristic], algorithm)
             if (failed == True):
                 break
@@ -300,7 +300,6 @@ while (success == False):
         print()
         for heuristic in range(H1, H3+1):
             for algorithm in range(GBFS, A_STAR+1):
-#               print(paths_table)
                 solution_path = paths_table[heuristic][algorithm]
                 total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
                 print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
@@ -315,41 +314,3 @@ while (success == False):
 while (True):
     play_sound(1000, 600)
     time.sleep(1)
-#for heuristic in range(H1, H3+1):
-#    for algorithm in range(GBFS, A_STAR+1):
-
-#           
-    '''
-    scores = []
-    h_choice = {
-        H1 : [h1_score, scores],
-        H2 : [h2_score, scores],
-        H3 : [h3_score, scores] 
-    }
-    moves = 0
-    current_node = copy.deepcopy(state_tree)
-    visited = [current_node]
-    frontier = []
-    total_nodes = 1
-    solution_path = run_test(frontier, current_node, visited, moves, h_choice[heuristic], A_PLUS)
-    if (solution_path != None):
-        paths.append(solution_path)
-#    '''
-'''
-while (current_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):
-    heuristic = h_choice[H2]
-    algorithm = GBFS
-    moves += 1
-    if (moves % 1000 == 0):
-        print("Visited Nodes: ", moves, "  Node Depth: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes, "  Top Score: ", top_score)
-    total_nodes += update_search_tree(frontier, current_node, visited, heuristic, algorithm)
-    current_node, top_score = update_state(frontier, heuristic[SCORE_LIST])
-    visited.append(current_node)
-if (moves < MAX_MOVES):
-    solution_path = path(current_node)
-    for board in solution_path:
-        print(board.board, end='-->')   
-    print()
-    print()
-    print("Visited Nodes: ", moves, "  Steps: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes)
-'''
