@@ -319,7 +319,7 @@ while (successes < 100):
 #                        print(node.board_state.board, end='-->')
 #                    print()
 #                    print()
-                    out.write("\n\n"
+                    out.write("\n\n")
             out.write("\n\n")
             out.close()        
     else:
