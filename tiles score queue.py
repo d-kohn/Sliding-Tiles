@@ -58,6 +58,9 @@ class Board:
 #        board = [[3,4,5],[2,0,8],[1,6,7]]
 #        self.blank = [1,1]
 
+#        board = [[2,6,0],[8,7,1],[5,3,4]]
+#        self.blank = [0,2]
+
 #        '''
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
         tiles = [False] * (self.size*self.size)
@@ -113,7 +116,14 @@ class Board:
 
 def play_sound(duration, frequency):
     winsound.Beep(frequency, duration)
-        
+
+def to_tuple(board):
+    board_key = ()
+    for row in range(BOARD_SIZE):
+        board_key = board_key + tuple(board[row])
+#    print(board_key)
+    return(board_key)        
+
 # Count number of displaced tiles
 def h1_score(board):
     score = 0
@@ -164,15 +174,9 @@ def update_search_tree(frontier, current_state, visited, h, g):
                 new_board_state.board[blank_x][blank_y] = new_board_state.board[new_blank_position_x][new_blank_position_y]
                 new_board_state.board[new_blank_position_x][new_blank_position_y] = BLANK
                 new_board_state.blank = [new_blank_position_x,new_blank_position_y]
-                # Check if node has already been added
-                do_not_add = False
-                for visited_node in visited:    
-                    if (visited_node.board_state.board == new_board_state.board):
-                        do_not_add = True
-                        break
-                if (do_not_add == False):
+                if (visited.get(to_tuple(new_board_state.board)) == None):
                     new_node = Node(new_board_state, current_state)
-                    score = h[SCORE_FUNCTION](new_node.board_state.board)
+                    score = h(new_node.board_state.board)
                     if (g == A_STAR):
                         score += new_node.steps
                     frontier[score].append(new_node)
@@ -204,19 +208,16 @@ def run_test(frontier, current_node, visited, moves, heuristic, algorithm):
         if (moves % REPORT_FREQUENCY == 0):            
             print("Visited Nodes: ", moves, "  Node Depth: ", current_node.steps, "  Total Nodes: ", total_nodes, "  Top Score: ", top_score, "  Frontier: ", end='')
             for index in range(len(frontier)-1):
-#                frontier_size = 0
                 frontier_size = len(frontier[index])
                 if (frontier_size > 0):
                     print(f"{index}: {frontier_size} ", end='')
             print()
         total_nodes += update_search_tree(frontier, current_node, visited, heuristic, algorithm)
         current_node, top_score = update_state(frontier)
-        visited.append(current_node)
+        current_node_key = to_tuple(current_node.board_state.board)
+        visited[current_node_key] = True
     if (moves < MAX_MOVES):
         solution_path = path(current_node)
-#        for board in solution_path:
-#            print(board.board, end='-->')   
-#        print()
         print("SOLUTION FOUND! Visited Nodes: ", moves, "  Steps: ", current_node.steps, "  Frontier Nodes: ", len(frontier), "  Total Nodes: ", total_nodes)
         print()
         failed = False
@@ -224,12 +225,12 @@ def run_test(frontier, current_node, visited, moves, heuristic, algorithm):
 
 # ------- MAIN --------
 BOARD_SIZE = 3
-MAX_MOVES = 50000
-REPORT_FREQUENCY = 1000
+MAX_MOVES = 1000000
+REPORT_FREQUENCY = 5000
 X = 0
 Y = 1
 BLANK = 0
-FRONTIER_MAX_SCORE = 40
+FRONTIER_MAX_SCORE = 50
 
 LEFT_TILE = 0
 UP_TILE = 1
@@ -264,25 +265,31 @@ MOVE = {
 }
 
 GOAL_BOARD = Board(BOARD_SIZE, "GOAL")
-success = False
+successes = 0
+visited = {}
 total_steps = [ [0]*BOARD_SIZE for i in range(BOARD_SIZE)]
-while (success == False):
+h_choice = {
+    H1 : h1_score,
+    H2 : h2_score,
+    H3 : h3_score
+}
+while (successes < 100):
     state_tree = Node(Board(BOARD_SIZE))
     state_tree.board_state.print_board()
+#    print(to_tuple(state_tree.board_state.board))
     paths_table = []
     failed = False
+    
     for heuristic in range(H1, H3+1):
         paths = []
         for algorithm in range(GBFS, A_STAR+1):
-            scores = []
-            h_choice = {
-                H1 : [h1_score, scores],
-                H2 : [h2_score, scores],
-                H3 : [h3_score, scores] 
-            }
+#            print(state_tree)
+            visited = {}
             moves = 0
-            current_node = state_tree
-            visited = [current_node]
+            current_node = copy.deepcopy(state_tree)
+#            print(current_node)
+            current_node_key = to_tuple(current_node.board_state.board)
+            visited[current_node_key] = True
             frontier = [ [] for i in range(FRONTIER_MAX_SCORE) ]
             total_nodes = 1
             print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm])
@@ -294,18 +301,27 @@ while (success == False):
         if (failed == True):
             break
         paths_table.append(paths)
+    
     if (failed == False):
-        success = True
+        successes += 1
         print()
-        for heuristic in range(H1, H3+1):
-            for algorithm in range(GBFS, A_STAR+1):
-                solution_path = paths_table[heuristic][algorithm]
-                total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
-                print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
-                for node in solution_path:
-                    print(node.board_state.board, end='-->')
-                print()
-                print()
+        with open("data.txt", "a") as out:
+            out.write(str(state_tree.board_state.board) + "\n")
+            for heuristic in range(H1, H3+1):
+                for algorithm in range(GBFS, A_STAR+1):
+                    solution_path = paths_table[heuristic][algorithm]
+                    total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
+                    print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
+                    line = "Heuristic: " + str(h_name[heuristic]) + "  Algorithm: " + str(algorithm_name[algorithm]) + "  Steps: " + str(solution_path[len(solution_path)-1].steps) + "\n"
+                    out.write(line)
+                    for node in solution_path:
+                        out.write(str(node.board_state.board) + "-->")
+#                        print(node.board_state.board, end='-->')
+#                    print()
+#                    print()
+                    out.write("\n\n"
+            out.write("\n\n")
+            out.close()        
     else:
         print("Failed to find a solution...")   
         print()             
