@@ -6,19 +6,8 @@ import time
 # ------ Node Class ------
 class Node:
     def __init__(self, board_state, parent=None):
-        self.parent = parent
-        self.move_tile = [None] * 4
         self.board_state = board_state
-        if (self.parent != None):
-            self.steps = self.parent.steps + 1
-        else:
-            self.steps = 0
-
-    def add_node(self, new_node, tile):
-        self.move_tile[tile] = new_node
-
-    def go(self, tile):
-        return self.move_tile[tile]
+        self.steps = 0
 # ------ End Node Class ------
 
 # ------ Board Class ------
@@ -36,30 +25,6 @@ class Board:
 
     def build_initial_board(self):
 #        Test boards:
-
-#        board = [[4,5,6],[3,7,8],[2,1,0]]
-#        self.blank = [2,2]
-
-#        board = [[8,7,6],[5,4,3],[2,1,0]]
-#        self.blank = [2,2]
-
-#        board = [[4,3,2],[6,1,5],[0,7,8]]
-#        self.blank = [2,0]
-
-#        board = [[0,1,2],[3,6,4],[7,8,5]]
-#        self.blank = [0,0]
-
-#        board = [[3,1,2],[6,0,4],[7,8,5]]
-#        self.blank = [1,1]
-
-#        board = [[1,0,2],[6,4,3],[7,8,5]]
-#        self.blank = [0,1]
-
-#        board = [[3,4,5],[2,0,8],[1,6,7]]
-#        self.blank = [1,1]
-
-#        board = [[2,6,0],[8,7,1],[5,3,4]]
-#        self.blank = [0,2]
 
 #        '''
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
@@ -161,41 +126,31 @@ def path(final_node):
         solution_path.insert(0, current_node)
     return solution_path
 
-def update_search_tree(frontier, current_state_node, visited, h, g):
+def update_search_tree(frontier, current_node, visited, h, g):
     nodes_added = 0
     for tile in range(4):
-        if (current_state_node.move_tile[tile] != None):
-            old_node = current_state_node.move_tile[tile]
-            if (visited.get(to_tuple(old_node.board_state.board)) == None):
-                score = h(old_node.board_state.board)
-                if (g == A_STAR):
-                    score += old_node.steps
-                frontier[score].append(old_node)
-                nodes_added += 1
-        else:
-            new_board_state = copy.deepcopy(current_state_node.board_state)
-            blank_x = new_board_state.blank[X]
-            blank_y = new_board_state.blank[Y]
-            new_blank_position_x = blank_x + (MOVE[tile])[X]
-            new_blank_position_y = blank_y + (MOVE[tile])[Y]
-            if (new_blank_position_x >= 0 and new_blank_position_x < BOARD_SIZE):
-                if (new_blank_position_y >= 0 and new_blank_position_y < BOARD_SIZE):
-                    new_board_state.board[blank_x][blank_y] = new_board_state.board[new_blank_position_x][new_blank_position_y]
-                    new_board_state.board[new_blank_position_x][new_blank_position_y] = BLANK
-                    new_board_state.blank = [new_blank_position_x,new_blank_position_y]
-                    if (visited.get(to_tuple(new_board_state.board)) == None):
-                        new_node = Node(new_board_state, current_state_node)
-                        current_state_node.add_node(new_node, tile)
-                        score = h(new_node.board_state.board)
-                        if (g == A_STAR):
-                            score += new_node.steps
-                        frontier[score].append(new_node)
-                        current_state_node.add_node(new_node, tile)
-                        nodes_added += 1
+        new_board_state = copy.deepcopy(current_node.board_state)
+        blank_x = new_board_state.blank[X]
+        blank_y = new_board_state.blank[Y]
+        new_blank_position_x = blank_x + (MOVE[tile])[X]
+        new_blank_position_y = blank_y + (MOVE[tile])[Y]
+        if (new_blank_position_x >= 0 and new_blank_position_x < BOARD_SIZE):
+            if (new_blank_position_y >= 0 and new_blank_position_y < BOARD_SIZE):
+                new_board_state.board[blank_x][blank_y] = new_board_state.board[new_blank_position_x][new_blank_position_y]
+                new_board_state.board[new_blank_position_x][new_blank_position_y] = BLANK
+                new_board_state.blank = [new_blank_position_x,new_blank_position_y]
+                if (visited.get(to_tuple(new_board_state.board)) == None):
+                    new_node = Node(new_board_state)
+                    new_node.steps = current_node.steps + 1
+                    score = h(new_node.board_state.board)
+                    if (g == A_STAR):
+                        score += new_node.steps
+                    frontier[score].append(new_node)
+                    nodes_added += 1
     return nodes_added
 
 def update_state(frontier):
-    new_state = None
+    new_state_node = None
     top_score = 0
     index = 0
     for score in range(FRONTIER_MAX_SCORE):
@@ -204,13 +159,12 @@ def update_state(frontier):
             top_score = score
             if (length > 1):
                 index = random.randrange(length-1)
-            new_state = frontier[top_score][index]
+            new_state_node = copy.deepcopy(frontier[top_score][index])
             del frontier[top_score][index]
             break
-    return new_state, top_score
+    return new_state_node, top_score
 
 def run_test(frontier, curr_node, visited, moves, heuristic, algorithm):
-    solution_path = None
     total_nodes = 0
     while (curr_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):      
         failed = True
@@ -223,28 +177,30 @@ def run_test(frontier, curr_node, visited, moves, heuristic, algorithm):
                     print(f"{index}: {frontier_size} ", end='')
             print()
         total_nodes += update_search_tree(frontier, curr_node, visited, heuristic, algorithm)
+        del curr_node.board_state
+        del curr_node
         curr_node, top_score = update_state(frontier)
         current_node_key = to_tuple(curr_node.board_state.board)
         visited[current_node_key] = True
     if (moves < MAX_MOVES):
-        solution_path = path(curr_node)
         print("SOLUTION FOUND! Visited Nodes: ", moves, "  Steps: ", curr_node.steps, "  Total Nodes: ", total_nodes, "  Frontier: ", end='')
         for index in range(len(frontier)-1):
             frontier_size = len(frontier[index])
             if (frontier_size > 0):
                 print(f"{index}: {frontier_size} ", end='')
         print()
+        print()
         failed = False
-    return solution_path, failed
+    return curr_node, failed
 
 # ------- MAIN --------
-BOARD_SIZE = 3
-MAX_MOVES = 10000000
-REPORT_FREQUENCY = 20000
+BOARD_SIZE = 4
+MAX_MOVES = 25000000
+REPORT_FREQUENCY = 100000
 X = 0
 Y = 1
 BLANK = 0
-FRONTIER_MAX_SCORE = 100
+FRONTIER_MAX_SCORE = 1000
 
 LEFT_TILE = 0
 UP_TILE = 1
@@ -290,31 +246,25 @@ h_choice = {
 while (successes < 1):
     state_tree = Node(Board(BOARD_SIZE))
     state_tree.board_state.print_board()
-#    print(to_tuple(state_tree.board_state.board))
-    paths_table = []
-    failed = False
-    
+    failed = False  
     for heuristic in range(H1, H3+1):
-        paths = []
         for algorithm in range(GBFS, A_STAR+1):
 #            print(state_tree)
             visited = {}
             moves = 0
-            first_node = state_tree
+            first_node = copy.deepcopy(state_tree)
+            first_node.board_state = copy.deepcopy(state_tree.board_state)
 #            print(current_node)
             current_node_key = to_tuple(first_node.board_state.board)
             visited[current_node_key] = True
             frontier = [ [] for i in range(FRONTIER_MAX_SCORE) ]
             total_nodes = 1
             print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm])
-            solution_path, failed = run_test(frontier, first_node, visited, moves, h_choice[heuristic], algorithm)
+            first_node, failed = run_test(frontier, first_node, visited, moves, h_choice[heuristic], algorithm)
             if (failed == True):
                 break
-            paths.append(solution_path)
-            solution_path = None
         if (failed == True):
             break
-        paths_table.append(paths)
     
     if (failed == False):
         successes += 1
@@ -323,16 +273,9 @@ while (successes < 1):
             out.write(str(state_tree.board_state.board) + "\n")
             for heuristic in range(H1, H3+1):
                 for algorithm in range(GBFS, A_STAR+1):
-                    solution_path = paths_table[heuristic][algorithm]
-                    total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
-                    print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
-                    line = "Heuristic: " + str(h_name[heuristic]) + "  Algorithm: " + str(algorithm_name[algorithm]) + "  Steps: " + str(solution_path[len(solution_path)-1].steps) + "\n"
+                    print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", first_node.steps)
+                    line = "Heuristic: " + str(h_name[heuristic]) + "  Algorithm: " + str(algorithm_name[algorithm]) + "  Steps: " + str(first_node.steps) + "\n"
                     out.write(line)
-#                    for node in solution_path:
-#                        out.write(str(node.board_state.board) + "-->")
-#                        print(node.board_state.board, end='-->')
-#                    print()
-#                    print()
                     out.write("\n\n")
             out.write("\n\n")
             out.close()        
@@ -340,6 +283,6 @@ while (successes < 1):
         print("Failed to find a solution...")   
         print()             
 
-#while (True):
-#    play_sound(1000, 600)
-#    time.sleep(1)
+while (True):
+    play_sound(1000, 600)
+    time.sleep(1)
