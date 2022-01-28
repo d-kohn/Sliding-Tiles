@@ -1,31 +1,50 @@
 import random
 import copy
-import winsound
-import time
+#import winsound
 
 # ------ Node Class ------
 class Node:
     def __init__(self, board_state, parent=None):
-        self.parent = parent
-        self.move_tile = [None] * 4
-        self.board_state = board_state
-        if (self.parent != None):
+        ''' Build Node object
+        Args:
+            self: the Node object
+            board_state: Board object to store in the Node
+            parent: pointer to parent Node - default: None
+        Returns:
+            Nothing
+        '''  
+        self.parent = parent                        # Parent Node
+        self.move_tile = [None] * 4                 # Pointers to the Left/Up/Down/Right Nodes from this Node
+        self.board_state = board_state              # Board object
+        self.steps = 0                              # Number of steps to the root Node
+        if (self.parent != None):                   
             self.steps = self.parent.steps + 1
-        else:
-            self.steps = 0
 
     def add_node(self, new_node, tile):
+        ''' Adds a node to the 
+        Args:
+            self: the Board object
+            size: size of the board  size X size
+            board_type: RANDOM or GOAL - default: RANDOM
+        Returns:
+            Nothing
+        '''  
         self.move_tile[tile] = new_node
-
-    def go(self, tile):
-        return self.move_tile[tile]
 # ------ End Node Class ------
 
 # ------ Board Class ------
 class Board:
     def __init__(self, size, board_type="RANDOM"):
-        self.size = size
-        self.blank = []
+        ''' Build Board object
+        Args:
+            self: the Board object
+            size: size of the board  size X size
+            board_type: RANDOM or GOAL - default: RANDOM
+        Returns:
+            Nothing
+        '''  
+        self.size = size                        # Length the side of the puzzle
+        self.blank = []                         # coordinates of the blank space (y, x)
         if (board_type == "GOAL"):
             self.board = self.build_goal()
         else:
@@ -35,33 +54,12 @@ class Board:
                 parity = self.check_parity()
 
     def build_initial_board(self):
-#        Test boards:
-
-#        board = [[4,5,6],[3,7,8],[2,1,0]]
-#        self.blank = [2,2]
-
-#        board = [[8,7,6],[5,4,3],[2,1,0]]
-#        self.blank = [2,2]
-
-#        board = [[4,3,2],[6,1,5],[0,7,8]]
-#        self.blank = [2,0]
-
-#        board = [[0,1,2],[3,6,4],[7,8,5]]
-#        self.blank = [0,0]
-
-#        board = [[3,1,2],[6,0,4],[7,8,5]]
-#        self.blank = [1,1]
-
-#        board = [[1,0,2],[6,4,3],[7,8,5]]
-#        self.blank = [0,1]
-
-#        board = [[3,4,5],[2,0,8],[1,6,7]]
-#        self.blank = [1,1]
-
-#        board = [[2,6,0],[8,7,1],[5,3,4]]
-#        self.blank = [0,2]
-
-#        '''
+        ''' Build goal state puzzle
+        Args:
+            self: the Board object
+        Returns:
+            2-D List: random puzzle board
+        '''  
         board = [[0]*BOARD_SIZE for i in range(BOARD_SIZE)]
         tiles = [False] * (self.size*self.size)
 
@@ -82,6 +80,12 @@ class Board:
         return board
 
     def build_goal(self):
+        ''' Build goal state puzzle
+        Args:
+            self: the Board object
+        Returns:
+            2-D List: puzzle board goal state
+        '''  
         board = []
         for y in range(self.size):
             row = []
@@ -91,6 +95,12 @@ class Board:
         return board
 
     def check_parity(self):
+        ''' Checks if the board is in the domain of the goal state
+        Args:
+            self: the Board object
+        Returns:
+            bool: True - is in the domain of the goal state / False - is not
+        '''  
         correct_order = [i for i in range(1, self.size*self.size)]
         board_order = []
         displacement_count = 0
@@ -110,22 +120,29 @@ class Board:
             return False
 
     def print_board(self):
+        ''' Activates our AI overlords..or just prints a formated puzzle
+        Args:
+            self: the Board object
+        Returns:
+            Nothing
+        '''  
         for i in range(self.size):
             print(self.board[i])
 # ------ End Board Class ------
-
-def play_sound(duration, frequency):
-    winsound.Beep(frequency, duration)
 
 def to_tuple(board):
     board_key = ()
     for row in range(BOARD_SIZE):
         board_key = board_key + tuple(board[row])
-#    print(board_key)
     return(board_key)        
 
-# Count number of displaced tiles
 def h1_score(board):
+    ''' Score board using h1 heuristic
+    Args:
+        board: 2-D array puzzle board to be scored
+    Returns:
+        int: the board's heuristic score
+    '''  
     score = 0
     for y in range(BOARD_SIZE):
         for x in range(BOARD_SIZE):
@@ -133,7 +150,13 @@ def h1_score(board):
                 score += 1
     return score
 
-def h2_score(board):  
+def h2_score(board):
+    ''' Score board using h2 heuristic
+    Args:
+        board: 2-D array puzzle board to be scored
+    Returns:
+        int: the board's heuristic score
+    '''  
     score = 0
     for goal_y in range(BOARD_SIZE):
         for goal_x in range(BOARD_SIZE):
@@ -151,9 +174,21 @@ def h2_score(board):
     return score
 
 def h3_score(board):
+    ''' Score board using h3 heuristic
+    Args:
+        board: 2-D array puzzle board to be scored
+    Returns:
+        int: the board's heuristic score
+    '''  
     return h1_score(board) + h2_score(board)
 
 def path(final_node):
+    ''' Start from the final node and record path through parents to the start state
+    Args:
+        final_node: current node equal to the goal state
+    Returns:
+        List: list of nodes making a path from the final node to the start state
+    '''  
     solution_path = [final_node]
     current_node = final_node
     while(current_node.parent != None):
@@ -162,8 +197,23 @@ def path(final_node):
     return solution_path
 
 def update_search_tree(frontier, current_state_node, visited, h, g):
+    ''' Take the new current Node and create its children states, verify 
+        they haven't been visited score them based on the heuristic and
+        algorithm, then append them to the frontier priority queue
+    Args:
+        frontier: 2-dimenstional List priority queue of leaf puzzle states
+        current_state_node: current puzzle state node
+        visited: map of previously visited puzzle states
+        h: heuristic scoring function
+        g: algorithm being used (GBFS or A_STAR)
+    Returns:
+        int: nodes added to the state tree
+    '''
     nodes_added = 0
+    # Child nodes generated are kept from previous heuristic/node tests
     for tile in range(4):
+        # Check if the current node already has a child node, check if it's been visited, if not, score it, add
+        # it to the frontier
         if (current_state_node.move_tile[tile] != None):
             old_node = current_state_node.move_tile[tile]
             if (visited.get(to_tuple(old_node.board_state.board)) == None):
@@ -172,7 +222,10 @@ def update_search_tree(frontier, current_state_node, visited, h, g):
                     score += old_node.steps
                 frontier[score].append(old_node)
                 nodes_added += 1
+        # If there is not a child node already, build the puzzle, check if it was visited, create a new node, add
+        # it to the parent Node as a child, score it, and add it to the frontier
         else:
+            #Build the new puzzle board
             new_board_state = copy.deepcopy(current_state_node.board_state)
             blank_x = new_board_state.blank[X]
             blank_y = new_board_state.blank[Y]
@@ -183,6 +236,7 @@ def update_search_tree(frontier, current_state_node, visited, h, g):
                     new_board_state.board[blank_x][blank_y] = new_board_state.board[new_blank_position_x][new_blank_position_y]
                     new_board_state.board[new_blank_position_x][new_blank_position_y] = BLANK
                     new_board_state.blank = [new_blank_position_x,new_blank_position_y]
+                    # Check visited, score the puzzle, add to the frontier
                     if (visited.get(to_tuple(new_board_state.board)) == None):
                         new_node = Node(new_board_state, current_state_node)
                         current_state_node.add_node(new_node, tile)
@@ -195,6 +249,13 @@ def update_search_tree(frontier, current_state_node, visited, h, g):
     return nodes_added
 
 def update_state(frontier):
+    ''' Choose next state from the frontier priority queue
+    Args:
+        frontier: 2-dimenstional List priority queue of leaf puzzle states
+    Returns:
+        Node: New puzzle state
+        int: current best heuristic score
+    '''
     new_state = None
     top_score = 0
     index = 0
@@ -210,6 +271,18 @@ def update_state(frontier):
     return new_state, top_score
 
 def run_test(frontier, curr_node, visited, moves, heuristic, algorithm):
+    ''' Main test loop - Tests one heuristic/algorithm combination
+    Args:
+        frontier: 2-dimenstional List priority queue of leaf puzzle states
+        curr_node: current puzzle state node
+        visited: map of previously visited puzzle states
+        moves: count of total iterations
+        heuristic: heuristic scoring function
+        algorithm: algorithm being used (GBFS or A_STAR)
+    Returns:
+        List: nodes path from start to goal
+        bool: True - solution not found / False - solution found 
+    '''
     solution_path = None
     total_nodes = 0
     while (curr_node.board_state.board != GOAL_BOARD.board and moves < MAX_MOVES):      
@@ -238,84 +311,87 @@ def run_test(frontier, curr_node, visited, moves, heuristic, algorithm):
     return solution_path, failed
 
 # ------- MAIN --------
-BOARD_SIZE = 3
-MAX_MOVES = 10000000
-REPORT_FREQUENCY = 20000
-X = 0
-Y = 1
-BLANK = 0
-FRONTIER_MAX_SCORE = 100
+BOARD_SIZE = 3                  # H x W of the board
+MAX_MOVES = 10000000            # Maximum number of iterations
+REPORT_FREQUENCY = 10000        # Number of iterations to complete between progress reports
+X = 0                           # For locating X-location values in array representing coordinates
+Y = 1                           # For locating Y-location values in array representing coordinates
+BLANK = 0                       # Value of the "blank" space
+FRONTIER_MAX_SCORE = 60         # Max heuristic score for frontier priority queue
 
-LEFT_TILE = 0
-UP_TILE = 1
-DOWN_TILE = 2
-RIGHT_TILE = 3
+LEFT_TILE = 0                   # Tile to the left of blank
+UP_TILE = 1                     # Tile up from the blank
+DOWN_TILE = 2                   # Tile down from the blank
+RIGHT_TILE = 3                  # Tile to the right of blank
 
-GBFS = 0
-A_STAR = 1
-H1 = 0
-H2 = 1
-H3 = 2
+GBFS = 0                        # Greedy Best First Search
+A_STAR = 1                      # A* Search
+H1 = 0                          # h1 heuristic
+H2 = 1                          # h2 heuristic
+H3 = 2                          # h3 heuristic
 
-h_name = {
+h_name = {                      # map heuristic to string name
     H1 : "H1",
     H2 : "H2",
     H3 : "H3"
 }
 
-algorithm_name = {
+algorithm_name = {              # map algorithm to string name
     GBFS : "GBFS",
     A_STAR : "A*"
 }
 
-SCORE_FUNCTION = 0
-SCORE_LIST = 1
+SCORE_FUNCTION = 0              # score function pointer array location
+SCORE_LIST = 1                  # score list array location (not used)
 
-MOVE = {
+MOVE = {                        # Vectors for transitioning to indicated tile
     LEFT_TILE: [-1, 0],
     UP_TILE: [0, -1],
     DOWN_TILE: [0, 1],
     RIGHT_TILE: [1, 0]
 }
 
-GOAL_BOARD = Board(BOARD_SIZE, "GOAL")
-successes = 0
-visited = {}
-total_steps = [ [0]*BOARD_SIZE for i in range(BOARD_SIZE)]
-h_choice = {
+GOAL_BOARD = Board(BOARD_SIZE, "GOAL")                                      # Goal state
+successes = 0                                                               # Puzzles solved
+visited = {}                                                                # map of previously visited puzzle states
+total_steps = [ [0]*len(algorithm_name) for i in range(len(h_name))]        # store steps for each algorithm/heuristic combination
+h_choice = {                                                                # map of heuristics to scoring functions
     H1 : h1_score,
     H2 : h2_score,
     H3 : h3_score
 }
-while (successes < 1):
-    state_tree = Node(Board(BOARD_SIZE))
-    state_tree.board_state.print_board()
-#    print(to_tuple(state_tree.board_state.board))
-    paths_table = []
-    failed = False
+# Repeat until the number of successes is reached
+while (successes < 1):                                                  
+    state_tree = Node(Board(BOARD_SIZE))                                    # Initialize the puzzle root node
+    state_tree.board_state.print_board()            
+
+    paths_table = []                                                        # Array for storing solution paths
+    failed = False                                                          # failed to find a solution
     
+    # Repeat until all heuristics are tested
     for heuristic in range(H1, H3+1):
         paths = []
+        # Repeat until all algoritms are tested                                                          
         for algorithm in range(GBFS, A_STAR+1):
-#            print(state_tree)
-            visited = {}
-            moves = 0
-            first_node = state_tree
-#            print(current_node)
-            current_node_key = to_tuple(first_node.board_state.board)
-            visited[current_node_key] = True
-            frontier = [ [] for i in range(FRONTIER_MAX_SCORE) ]
-            total_nodes = 1
+            visited = {}                                                    # reset visited map
+            moves = 0                                                       # reset moves (iteration) count
+            first_node = state_tree                                         
+            current_node_key = to_tuple(first_node.board_state.board)       # Create tuple of root puzzle
+            visited[current_node_key] = True                                # Set root puzzle map to True
+            frontier = [ [] for i in range(FRONTIER_MAX_SCORE) ]            # Initialize frontier priority queue
             print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm])
             solution_path, failed = run_test(frontier, first_node, visited, moves, h_choice[heuristic], algorithm)
+            # if a solution wasn't found, break out of loop
             if (failed == True):
                 break
             paths.append(solution_path)
-            solution_path = None
+#            solution_path = None
+        # if a solution wasn't found, break out of loop
         if (failed == True):
             break
         paths_table.append(paths)
     
+    # If a solution is found for all 6 heuristic/algorithm combos, output results
     if (failed == False):
         successes += 1
         print()
@@ -331,6 +407,8 @@ while (successes < 1):
 #                    for node in solution_path:
 #                        out.write(str(node.board_state.board) + "-->")
 #                        print(node.board_state.board, end='-->')
+#                        node.board_state.print_board()
+#                        print()
 #                    print()
 #                    print()
                     out.write("\n\n")
@@ -339,7 +417,3 @@ while (successes < 1):
     else:
         print("Failed to find a solution...")   
         print()             
-
-#while (True):
-#    play_sound(1000, 600)
-#    time.sleep(1)
