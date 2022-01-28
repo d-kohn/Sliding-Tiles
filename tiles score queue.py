@@ -161,17 +161,18 @@ def h2_score(board):
     score = 0
     for goal_y in range(BOARD_SIZE):
         for goal_x in range(BOARD_SIZE):
-            found = False
-            while (found == False):
-                for board_y in range(BOARD_SIZE):
-                    for board_x in range(BOARD_SIZE):
-                        if (board[board_x][board_y] == GOAL_BOARD.board[goal_x][goal_y]):                          
-                            man_distance = abs(board_x - goal_x) + abs(board_y - goal_y)
-                            score += man_distance
-                            found = True
+            if (GOAL_BOARD.board[goal_x][goal_y] != 0):
+                found = False
+                while (found == False):
+                    for board_y in range(BOARD_SIZE):
+                        for board_x in range(BOARD_SIZE):
+                            if (board[board_x][board_y] == GOAL_BOARD.board[goal_x][goal_y]):                          
+                                man_distance = abs(board_x - goal_x) + abs(board_y - goal_y)
+                                score += man_distance
+                                found = True
+                                break
+                        if (found == True):
                             break
-                    if (found == True):
-                        break
     return score
 
 def h3_score(board):
@@ -315,11 +316,11 @@ def play_sound(duration, frequency):
     winsound.Beep(frequency, duration)
 
 # ------- MAIN --------
-BOARD_SIZE = 3                  # H x W of the board
-TRIAL_COUNT = 10                # Number of puzzles to test       
-MAX_ITERATIONS = 1000000        # Maximum number of iterations
-REPORT_FREQUENCY = 10000        # Number of iterations to complete between progress reports
-FRONTIER_MAX_SCORE = 200        # Max heuristic score for frontier priority queue
+BOARD_SIZE = 3                 # H x W of the board
+TRIAL_COUNT = 1000             # Number of puzzles to test       
+MAX_ITERATIONS = 1000000       # Maximum number of iterations
+REPORT_FREQUENCY = 10000       # Number of iterations to complete between progress reports
+FRONTIER_MAX_SCORE = 100        # Max heuristic score for frontier priority queue
 
 X = 0                           # For locating X-location values in array representing coordinates
 Y = 1                           # For locating Y-location values in array representing coordinates
