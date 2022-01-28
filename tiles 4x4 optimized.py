@@ -194,9 +194,9 @@ def run_test(frontier, curr_node, visited, moves, heuristic, algorithm):
     return curr_node, failed
 
 # ------- MAIN --------
-BOARD_SIZE = 4
+BOARD_SIZE = 5
 MAX_MOVES = 25000000
-REPORT_FREQUENCY = 100000
+REPORT_FREQUENCY = 50000
 X = 0
 Y = 1
 BLANK = 0
@@ -248,7 +248,7 @@ while (successes < 1):
     state_tree.board_state.print_board()
     failed = False  
     for heuristic in range(H1, H3+1):
-        for algorithm in range(GBFS, A_STAR+1):
+        for algorithm in range(GBFS, A_STAR):
 #            print(state_tree)
             visited = {}
             moves = 0
@@ -272,7 +272,7 @@ while (successes < 1):
         with open("data.txt", "a") as out:
             out.write(str(state_tree.board_state.board) + "\n")
             for heuristic in range(H1, H3+1):
-                for algorithm in range(GBFS, A_STAR+1):
+                for algorithm in range(GBFS, A_STAR):
                     print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", first_node.steps)
                     line = "Heuristic: " + str(h_name[heuristic]) + "  Algorithm: " + str(algorithm_name[algorithm]) + "  Steps: " + str(first_node.steps) + "\n"
                     out.write(line)
