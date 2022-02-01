@@ -1,7 +1,7 @@
 import random
 import copy
-import winsound
-import time
+#import winsound
+#import time
 
 # ------ Node Class ------
 class Node:
@@ -132,6 +132,12 @@ class Board:
 # ------ End Board Class ------
 
 def to_tuple(board):
+    ''' Convert the puzzle board List to a Tuple so it can be used as a map key
+    Args:
+        board: puzzle board list
+    Returns:
+        tuple: returns a the list as a tuple of 3 tuples with 3 numbers in each sub-tuple
+    '''
     board_key = ()
     for row in range(BOARD_SIZE):
         board_key = board_key + tuple(board[row])
@@ -312,14 +318,14 @@ def run_test(frontier, curr_node, visited, moves, heuristic, algorithm):
         failed = False
     return solution_path, failed
 
-def play_sound(duration, frequency):
-    winsound.Beep(frequency, duration)
+#def play_sound(duration, frequency):
+#    winsound.Beep(frequency, duration)
 
 # ------- MAIN --------
-BOARD_SIZE = 3                 # H x W of the board
-TRIAL_COUNT = 1000             # Number of puzzles to test       
-MAX_ITERATIONS = 1000000       # Maximum number of iterations
-REPORT_FREQUENCY = 10000       # Number of iterations to complete between progress reports
+BOARD_SIZE = 3                  # H x W of the board
+TRIAL_COUNT = 1                 # Number of puzzles to test       
+MAX_ITERATIONS = 1000000        # Maximum number of iterations
+REPORT_FREQUENCY = 10000        # Number of iterations to complete between progress reports
 FRONTIER_MAX_SCORE = 100        # Max heuristic score for frontier priority queue
 
 X = 0                           # For locating X-location values in array representing coordinates
@@ -387,6 +393,7 @@ while (successes < TRIAL_COUNT):
             current_node_key = to_tuple(first_node.board_state.board)       # Create tuple of root puzzle
             visited[current_node_key] = True                                # Set root puzzle map to True
             frontier = [ [] for i in range(FRONTIER_MAX_SCORE) ]            # Initialize frontier priority queue
+
             print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm])
             solution_path, failed = run_test(frontier, first_node, visited, moves, heuristic, algorithm)
             # if a solution wasn't found, break out of loop
@@ -402,34 +409,26 @@ while (successes < TRIAL_COUNT):
     if (failed == False):
         successes += 1
         print()
-        with open("data.txt", "a") as out:
-            out.write(str(state_tree.board_state.board) + "\n")
-            for heuristic in range(H1, H3+1):
-#                for algorithm in range(GBFS, A_STAR):
-                for algorithm in range(GBFS, A_STAR+1):
-                    solution_path = paths_table[heuristic][algorithm]
-                    total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
-                    print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
-                    line = "Heuristic: " + str(h_name[heuristic]) + "  Algorithm: " + str(algorithm_name[algorithm]) + "  Steps: " + str(solution_path[len(solution_path)-1].steps) + "\n"
-                    out.write(line)
-#                    for node in solution_path:
-#                        out.write(str(node.board_state.board) + "-->")
-#                        print(node.board_state.board, end='-->')
-#                        node.board_state.print_board()
-#                        print()
-            print()
-            print()
-#                    out.write("\n\n")
-            out.write("\n\n")
-#           out.close()        
+        for heuristic in range(H1, H3+1):
+#            for algorithm in range(GBFS, A_STAR):
+             for algorithm in range(GBFS, A_STAR+1):
+                solution_path = paths_table[heuristic][algorithm]
+                total_steps[heuristic][algorithm] += solution_path[len(solution_path)-1].steps
+                print("Heuristic: ", h_name[heuristic], "  Algorithm: ", algorithm_name[algorithm], "  Steps: ", solution_path[len(solution_path)-1].steps)
+                for node in solution_path:
+                    print(node.board_state.board, end='-->')
+                print()
+                print()
+        print()
+        print()
     else:
         print("Failed to find a solution...")   
         print()             
 
-print("Final averages:")
-for heuristic in range(H1, H3+1):
-    for algorithm in range(GBFS, A_STAR+1):
-        print(f"Heuristic: {h_name[heuristic]}  Algorithm: {algorithm_name[algorithm]}  Trials: {successes}  Total Steps: {total_steps[heuristic][algorithm]}  Average Steps: {total_steps[heuristic][algorithm] / successes}")
+#print("Final averages:")
+#for heuristic in range(H1, H3+1):
+#    for algorithm in range(GBFS, A_STAR+1):
+#        print(f"Heuristic: {h_name[heuristic]}  Algorithm: {algorithm_name[algorithm]}  Trials: {successes}  Total Steps: {total_steps[heuristic][algorithm]}  Average Steps: {total_steps[heuristic][algorithm] / successes}")
 
 #while (True):
 #    play_sound(1000, 600)
